@@ -305,14 +305,28 @@ describe('solardemo-provider', () => {
   })
 
   it('maintain', async () => {
-    // `check_default` proves the repository's default branch is main by
-    // looking for `[branch "main"]` in .git/config. A pull_request build
-    // checks out the merge ref, which records no such section, so the check
-    // fails there whatever the repository is actually configured to do. It
-    // still runs everywhere else, including CI builds of main.
-    const exclude = 'pull_request' === process.env.GITHUB_EVENT_NAME
-      ? ['check_default']
-      : []
+    // Two checks report a repository fault that is not there, because of
+    // where they are run rather than what they find. Both are excluded only
+    // in the environment that breaks them, so each still runs everywhere
+    // else.
+    const exclude = []
+
+    // `check_default` proves the default branch is main by looking for
+    // `[branch "main"]` in .git/config. A pull_request build checks out the
+    // merge ref, which records no such section. Still runs locally and on CI
+    // builds of main.
+    if ('pull_request' === process.env.GITHUB_EVENT_NAME) {
+      exclude.push('check_default')
+    }
+
+    // `url_pkgjson` reads the repository url out of package.json, which
+    // maintain locates by comparing `process.cwd() + '/package.json'` against
+    // a path it found with Filehound (maintain.js:175). On Windows those are
+    // the same file spelt with different separators, so the url is never
+    // read and the check fails whatever package.json says.
+    if ('win32' === process.platform) {
+      exclude.push('url_pkgjson')
+    }
 
     await Maintain({ exclude })
   })
