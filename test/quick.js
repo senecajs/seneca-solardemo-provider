@@ -1,82 +1,79 @@
+/* Manual script: exercise the full CRUD cycle against a running server.
+ *
+ * Start the companion test server from the SDK repo first:
+ *   cd ~/Projects/voxgig-sdk/voxgig-solardemo-sdk/app && npm start
+ *
+ * Then:  node test/quick.js
+ *
+ * Creates and then removes a planet, so the server is left as found.
+ */
+
 const Seneca = require('seneca')
 
-const { WebflowClient } = require('webflow-api')
-const accessToken = require('./local-env').WEBFLOW_ACCESSTOKEN
+const BASE = process.env.SOLARDEMO_TEST_BASE || 'http://localhost:8901'
 
-// runDirect()
 runSeneca()
 
-async function runDirect() {
-  // initialize the client with the access token
-  const webflow = new WebflowClient({ accessToken })
-
-  // const col = await webflow.collections.get('62ac4be6f216e4e2796c3a8d')
-  // console.log(col)
-
-  const items = await webflow.collections.items.listItems('62ac4be6f216e4e2796c3a8d',{
-    // offset: 100
-  })
-  console.log(items)
-  // const items = await col.listItems()
-  // console.log(items)
-
-}
-
-
 async function runSeneca() {
-  const seneca = await Seneca({legacy:false})
-        .test()
-        .use('promisify')
-        .use('entity')
-        .use('env', {
-          file: [__dirname + '/local-env.js;?'],
-          var: {
-            $WEBFLOW_ACCESSTOKEN: String,
+  const seneca = await Seneca({ legacy: false })
+    .test()
+    .use('promisify')
+    .use('entity')
+    .use('provider', {
+      provider: {
+        solardemo: {
+          keys: {
+            apikey: { value: '' },
           },
-        })
-        .use('provider',{
-          provider: {
-            webflow: {
-              keys: {
-                accesstoken: { value: '$WEBFLOW_ACCESSTOKEN' },
-              },
-            },
-          },
-        })
-        .use('..') // webflow-provider
-        .ready()
+        },
+      },
+    })
+    .use('..', { sdk: { base: BASE } })
+    .ready()
 
-  const cols = await seneca.entity('provider/webflow/collection').list$({
-    site_id: '62893b90ef00fa71089d14c6'
-  })
-  // console.log('cols', cols)
+  // Create: the API assigns the id, so none is supplied here.
+  let planet = await seneca
+    .entity('provider/solardemo/planet')
+    .make$({ name: 'QuickPlanet', kind: 'rock', diameter: 4321 })
+    .save$()
+  console.log('CREATED', planet)
 
-  const col0 = await seneca.entity('provider/webflow/collection')
-        .load$('62ac4be6f216e4e2796c3a8d')
-  // console.log('col0', col0)
+  const id = planet.id
 
-  const sites = await seneca.entity('provider/webflow/site').list$()
-  // console.log('sites', sites)
+  try {
+    // Update: an entity carrying an id is an update.
+    planet.name = 'QuickPlanet2'
+    console.log('UPDATED', await planet.save$())
 
-  const site0 = await seneca.entity('provider/webflow/site').load$(sites[0].id)
-  // console.log('site0', site0)
+    console.log(
+      'LOADED',
+      await seneca.entity('provider/solardemo/planet').load$(id)
+    )
 
-  const site1 = await seneca.entity('provider/webflow/site').load$('72893b90ef00fa71089d14c6')
-  // console.log('site1', site1)
-  
-  const items = await seneca.entity('provider/webflow/colitem').list$({
-     collection_id: '62ac4be6f216e4e2796c3a8d'
-  })
-  
-  // console.log(items.length)
-  // console.log(items[0])
+    // Moons are nested under a planet, so they always need a planet_id.
+    const moon = await seneca
+      .entity('provider/solardemo/moon')
+      .make$({
+        planet_id: 'earth',
+        name: 'QuickMoon',
+        kind: 'rock',
+        diameter: 12,
+      })
+      .save$()
+    console.log('MOON CREATED', moon)
 
-  let q = {
-    collection_id: col0.id,
-    item_id: items[0].id,
+    await seneca
+      .entity('provider/solardemo/moon')
+      .remove$({ planet_id: 'earth', id: moon.id })
+    console.log('MOON REMOVED')
   }
-  const item = await seneca.entity('provider/webflow/colitem').load$(q)
+  finally {
+    await seneca.entity('provider/solardemo/planet').remove$(id)
+    console.log('REMOVED', id)
+  }
 
-  console.log(item)
-  console.log(q)
+  console.log(
+    'AFTER REMOVE (expect null)',
+    await seneca.entity('provider/solardemo/planet').load$(id)
+  )
 }

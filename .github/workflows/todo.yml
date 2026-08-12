@@ -4,9 +4,16 @@ jobs:
   build:
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@master"
+      - uses: "actions/checkout@v7"
       - name: "todo-to-issue"
-        uses: "senecajs/todo-to-issue-action@master"
+        # senecajs/todo-to-issue-action is a fork of alstr/todo-to-issue-action.
+        # Its newest code is the master HEAD below (2020-05-08); the newest tag,
+        # v1.1-beta, predates the commits that add INCLUDE_EXT support and
+        # escape LABEL/COMMENT_MARKER, so tagging back would break the inputs
+        # used here. Pinned by SHA so the ref is immutable.
+        # Upstream (alstr) is actively maintained but has since renamed these
+        # inputs, so moving to it is a separate change.
+        uses: "senecajs/todo-to-issue-action@531d391e061b9770d3d571b70058add5b87c49f1"
         with:
           REPO: ${{ github.repository }}
           BEFORE: ${{ github.event.before }}

@@ -1,9 +1,9 @@
-/* Copyright © 2022 Seneca Project Contributors, MIT License. */
+/* Copyright © 2026 Seneca Project Contributors, MIT License. */
 
 
 const messages = {
   get_info: {
-    desc: 'Get information about the Webflow SDK.',
+    desc: 'Get information about the Voxgig Solardemo SDK.',
   },
 }
 

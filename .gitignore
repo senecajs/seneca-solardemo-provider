@@ -109,3 +109,6 @@ yarn.lock
 
 test/local-config.js
 test/local-env.js
+# TypeScript build info
+*.tsbuildinfo
+.tsbuildinfo/
