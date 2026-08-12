@@ -1,7 +1,7 @@
 /* Manual script: exercise the full CRUD cycle against a running server.
  *
  * Start the companion test server from the SDK repo first:
- *   cd ~/Projects/voxgig-sdk/voxgig-solardemo-sdk/app && npm start
+ *   cd ../../voxgig-sdk/voxgig-solardemo-sdk/app && npm start
  *
  * Then:  node test/quick.js
  *
@@ -12,10 +12,8 @@ const Seneca = require('seneca')
 
 const BASE = process.env.SOLARDEMO_TEST_BASE || 'http://localhost:8901'
 
-runSeneca()
-
-async function runSeneca() {
-  const seneca = await Seneca({ legacy: false })
+async function makeSeneca() {
+  return Seneca({ legacy: false })
     .test()
     .use('promisify')
     .use('entity')
@@ -30,11 +28,18 @@ async function runSeneca() {
     })
     .use('..', { sdk: { base: BASE } })
     .ready()
+}
+
+
+run()
+
+async function run() {
+  const seneca = await makeSeneca()
 
   // Create: the API assigns the id, so none is supplied here.
   let planet = await seneca
     .entity('provider/solardemo/planet')
-    .make$({ name: 'QuickPlanet', kind: 'rock', diameter: 4321 })
+    .make$({ diameter: 12345, kind: 'quick-kind', name: 'quick-name' })
     .save$()
   console.log('CREATED', planet)
 
@@ -42,7 +47,7 @@ async function runSeneca() {
 
   try {
     // Update: an entity carrying an id is an update.
-    planet.name = 'QuickPlanet2'
+    planet.diameter = 4321
     console.log('UPDATED', await planet.save$())
 
     console.log(
@@ -50,22 +55,19 @@ async function runSeneca() {
       await seneca.entity('provider/solardemo/planet').load$(id)
     )
 
-    // Moons are nested under a planet, so they always need a planet_id.
+    // moon records hang off planet records, so this one
+    // goes under the planet just created — and comes back off again.
     const moon = await seneca
       .entity('provider/solardemo/moon')
-      .make$({
-        planet_id: 'earth',
-        name: 'QuickMoon',
-        kind: 'rock',
-        diameter: 12,
-      })
+      .make$({ planet_id: id, diameter: 12345, kind: 'quick-kind', name: 'quick-name' })
       .save$()
     console.log('MOON CREATED', moon)
 
     await seneca
       .entity('provider/solardemo/moon')
-      .remove$({ planet_id: 'earth', id: moon.id })
+      .remove$({ planet_id: id, id: moon.id })
     console.log('MOON REMOVED')
+
   }
   finally {
     await seneca.entity('provider/solardemo/planet').remove$(id)

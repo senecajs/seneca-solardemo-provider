@@ -1,8 +1,8 @@
 # Tutorial: your first Solardemo query
 
-This tutorial takes you from an empty folder to a script that reads and
-writes solar system data through Seneca entities. It should take about
-fifteen minutes.
+This tutorial takes you from an empty folder to a script that
+reads and writes Solar System data through
+Seneca entities. It should take about fifteen minutes.
 
 You will build one script and add to it as you go. Everything runs
 locally against a test server you start yourself, so nothing here can
@@ -15,29 +15,31 @@ but its test server does not — it ships only in the SDK's source
 repository, so clone that:
 
 ```sh
-$ git clone https://github.com/voxgig-sdk/voxgig-solardemo-sdk.git \
-    ~/Projects/voxgig-sdk/voxgig-solardemo-sdk
+$ git clone https://github.com/voxgig-sdk/voxgig-solardemo-sdk.git
 ```
+
+If you already have that checkout beside this plugin, it is at
+`../../voxgig-sdk/voxgig-solardemo-sdk`, and you can skip the clone.
 
 ## Step 1: Start the test server
 
-The SDK repository ships a small server that implements the Solardemo
-API. Build and start it:
+That server implements the Solar System API. Build and start it:
 
 ```sh
-$ cd ~/Projects/voxgig-sdk/voxgig-solardemo-sdk/app
+$ cd voxgig-solardemo-sdk/app
 $ npm install
 $ npm run build
 $ npm start
 ```
 
-It listens on `http://localhost:8901`. Check it in another terminal:
+It listens on `http://localhost:8901`. Check it from another terminal:
 
 ```sh
 $ curl http://localhost:8901/api/planet
 ```
 
-You should see a JSON array of eight planets. Leave the server running.
+You should see a JSON array of planet records.
+Leave the server running.
 
 ## Step 2: Create the project
 
@@ -47,15 +49,13 @@ In a new terminal:
 $ mkdir solardemo-demo
 $ cd solardemo-demo
 $ npm init -y
-$ npm install seneca seneca-entity seneca-promisify @seneca/provider
+$ npm install seneca seneca-entity seneca-promisify @seneca/provider @seneca/solardemo-provider
 ```
 
-The provider plugin itself is not published yet, so install it from
-your local checkout:
-
-```sh
-$ npm install ~/Projects/seneca/seneca-solardemo-provider
-```
+The first four are the Seneca host: the framework itself, the entity
+API, the promise wrapper that makes calls awaitable, and the shared
+machinery every Seneca provider is built on. The last is this plugin,
+which brings the Solar System SDK with it.
 
 ## Step 3: Connect
 
@@ -102,142 +102,179 @@ You should see:
   ok: true,
   name: 'solardemo',
   version: '0.3.0',
-  sdk: { name: 'voxgig-solardemo', version: '0.1.0' },
+  sdk: { name: '@voxgig-sdk/voxgig-solardemo', version: '0.1.0' },
 }
 ```
 
-The API needs no credentials, but the `apikey` is declared anyway
-because that is how every Seneca provider is configured — the empty
-value simply means no `authorization` header is sent. Being consistent
-here means an application that later moves to an authenticated service
-changes one value, not its shape.
+Two details of that configuration are worth a moment. The `apikey` is
+declared even though nothing here asks for credentials — an empty
+value simply means no `authorization` header is sent. Every Seneca
+provider is configured the same way, so an application that later moves
+to an authenticated service changes one value rather than its shape.
+And `get:info` is answered by the plugin itself, without calling the
+API, so a reply tells you the plugin loaded and initialised before any
+request goes anywhere.
 
-## Step 4: List the planets
+## Step 4: List the planet records
 
 Replace the `console.log(info)` line with:
 
 ```js
-  const planets = await seneca.entity('provider/solardemo/planet').list$()
+  const planets = await seneca
+    .entity('provider/solardemo/planet')
+    .list$()
 
-  console.log('Found ' + planets.length + ' planets:')
-  planets.forEach((p) => {
-    console.log('  ' + p.id + '  ' + p.name + '  ' + p.diameter + 'km')
+  console.log('Found ' + planets.length + ' planet record(s):')
+  planets.forEach((r) => {
+    console.log('  ' + r.id + '  ' + r.diameter + '  ' + r.kind)
   })
 ```
 
-Run it again and you will see all eight planets.
+Run it again and you will see every planet
+record the server holds.
 
-No URL, no HTTP verb, no JSON parsing. You asked a Seneca entity for a
-list and the provider turned that into an SDK call, which turned it
-into an HTTP request. These are ordinary Seneca entities, so everything
-you know about the entity API applies.
+No URL, no HTTP verb, no JSON parsing. You asked a Seneca entity for
+a list, the provider turned that into an SDK call, and the SDK turned
+it into a request. These are ordinary Seneca entities, so everything
+you already know about the entity API applies to them.
 
 ## Step 5: Load one planet
 
 Add:
 
 ```js
-  const earth = await seneca
+  const one = await seneca
     .entity('provider/solardemo/planet')
-    .load$('earth')
+    .load$(planets[0].id)
 
-  console.log('Earth is ' + earth.diameter + 'km across')
+  console.log('loaded', one.id, one.diameter)
 ```
 
-`list$` gives you many, `load$` gives you one. Try a planet that does
-not exist:
+`list$` gives you many, `load$` gives you one. Now ask for
+something that is not there:
 
 ```js
-  const nope = await seneca
+  const missing = await seneca
     .entity('provider/solardemo/planet')
-    .load$('vulcan')
+    .load$('nosuchplanet')
 
-  console.log('vulcan =', nope)   // null
+  console.log('missing =', missing)   // null
 ```
 
-You get `null`, not an exception. "There is no such planet" is an
-ordinary answer to a lookup, so it does not interrupt your code.
+You get `null`, not an exception. "There is no such
+planet" is an ordinary answer to a lookup, so it does not
+interrupt your code.
 
-## Step 6: Reach the moons
+## Step 6: Create, change and remove
 
-Moons live inside planets, and the API reflects that: a moon's URL
-contains its planet. So every moon operation needs a `planet_id`:
-
-```js
-  const moons = await seneca
-    .entity('provider/solardemo/moon')
-    .list$({ planet_id: 'earth' })
-
-  console.log('Earth has ' + moons.length + ' moon(s):', moons.map((m) => m.name))
-```
-
-Leave out the `planet_id` and the provider tells you so directly,
-rather than letting a half-built request fail confusingly:
-
-```js
-  // throws: solardemo-provider: moon list: planet_id is required
-  await seneca.entity('provider/solardemo/moon').list$()
-```
-
-## Step 7: Create, change and remove
-
-Everything so far has been reading. The provider supports the full set
-of store commands, so you can write too. Add:
+Everything so far has been reading. This entity accepts writes too,
+so add:
 
 ```js
   // Create: make$ builds an entity, save$ persists it.
-  let pluto = await seneca
+  let planet = await seneca
     .entity('provider/solardemo/planet')
-    .make$({ name: 'Pluto', kind: 'rock', diameter: 2377 })
+    .make$({ diameter: 1234, kind: 'tutorial-kind', name: 'tutorial-name' })
     .save$()
 
-  console.log('created with id', pluto.id)
+  console.log('created with id', planet.id)
 ```
 
-Run it, and note the id printed. It is **not** one you chose — the API
-assigns ids itself and ignores any you send. That is worth knowing
-before you write code that assumes otherwise.
+Run it, and note the id printed. It is **not** one you chose — the
+server assigns ids itself and ignores any you send. That is worth
+knowing before you write code that assumes otherwise.
 
-Now change it. An entity that already has an id is an update:
+Now change it. An entity that already carries an id is an update
+rather than a create, and `save$` decides between the two on exactly
+that:
 
 ```js
-  pluto.diameter = 2400
-  pluto = await pluto.save$()
+  planet.diameter = 4321
+  planet = await planet.save$()
 
-  console.log('updated:', pluto.diameter)
+  console.log('updated:', planet.diameter)
 ```
 
 And remove it, leaving the server as you found it:
 
 ```js
-  await seneca.entity('provider/solardemo/planet').remove$(pluto.id)
+  await seneca
+    .entity('provider/solardemo/planet')
+    .remove$(planet.id)
+```
 
+Load it once more and, as before, you get `null`:
+
+```js
   console.log(
     'after remove:',
-    await seneca.entity('provider/solardemo/planet').load$(pluto.id)
+    await seneca
+      .entity('provider/solardemo/planet')
+      .load$(planet.id)
   )   // null
 ```
 
-The same four methods — `list$`, `load$`, `save$`, `remove$` — work on
-moons, remembering that moons always need their `planet_id`.
+Those are the only methods there are:
+
+`list$`, `load$`, `save$`, `remove$`
+
+They behave the same way on every entity this plugin exposes.
+
+## Step 7: Reach the moon records
+
+Moon records live inside planet records, and the API route
+says so:
+
+`/api/planet/{planet_id}/moon`
+
+The parent id in that path is not optional, so every moon
+call needs a `planet_id` in its query:
+
+```js
+  const moons = await seneca
+    .entity('provider/solardemo/moon')
+    .list$({ planet_id: planets[0].id })
+
+  console.log('found ' + moons.length + ' moon record(s)')
+```
+
+Leave the `planet_id` out and the call throws at once, naming the key it
+needed, rather than letting a half-built URL come back as a puzzling
+404:
+
+```js
+  // throws: @seneca/solardemo-provider: moon list: planet_id is required
+  await seneca
+    .entity('provider/solardemo/moon')
+    .list$()
+```
 
 ## What you have learned
 
-You built a script that reads and writes solar system data through
-Seneca entities, against a real server. Along the way you saw:
+You built a script that reads and writes
+Solar System data through Seneca entities,
+against a real server. Along
+the way you saw:
 
-- Provider configuration is uniform even when no credentials are needed.
-- API resources are Seneca entities under `provider/solardemo/`.
-- Nested resources need their parent id.
-- `load$` answers `null` for things that do not exist.
-- `save$` creates without an id and updates with one, and the server
-  chooses ids.
+- Provider configuration has the same shape even when no credentials
+  are needed.
+- API resources are Seneca entities under `provider/solardemo/`,
+  reached with the entity API you already know.
+- A resource nested under another in the API needs its parent's id in
+  every query, and says which key is missing when you forget.
+- `load$` answers `null` for something that is not there, rather
+  than throwing.
+- `save$` creates without an id and updates with one, and the
+  server chooses the id.
 
 ## Where to go next
 
-- To do a specific job — run without a server, reach the raw SDK, test
-  your own code — see the [how-to guides](how-to.md).
+- To do a specific job — run without a server, reach the raw SDK,
+  test your own code — see the [how-to guides](how-to.md).
 - To look up an exact pattern, field or option, see the
   [reference](reference.md).
-- To understand why the plugin is built this way, see the
-  [explanation](explanation.md).
+- To understand why the plugin is built this way — why entities rather
+  than one message per route, and what it does with the SDK's answers
+  — see the [explanation](explanation.md).
+- For what each of these documents is for, see the
+  [documentation index](README.md).
