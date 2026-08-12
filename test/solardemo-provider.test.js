@@ -305,7 +305,16 @@ describe('solardemo-provider', () => {
   })
 
   it('maintain', async () => {
-    await Maintain()
+    // `check_default` proves the repository's default branch is main by
+    // looking for `[branch "main"]` in .git/config. A pull_request build
+    // checks out the merge ref, which records no such section, so the check
+    // fails there whatever the repository is actually configured to do. It
+    // still runs everywhere else, including CI builds of main.
+    const exclude = 'pull_request' === process.env.GITHUB_EVENT_NAME
+      ? ['check_default']
+      : []
+
+    await Maintain({ exclude })
   })
 })
 
