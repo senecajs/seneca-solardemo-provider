@@ -19,7 +19,7 @@ Complete description of the interface exposed by
 | ---- | ----- |
 | Node.js | `>=24` |
 | Module format | CommonJS |
-| SDK | [`@voxgig-sdk/voxgig-solardemo`](https://www.npmjs.com/package/@voxgig-sdk/voxgig-solardemo) `^0.0.2` |
+| SDK | [`@voxgig-sdk/voxgig-solardemo`](https://www.npmjs.com/package/@voxgig-sdk/voxgig-solardemo) `^0.1.0` |
 
 The SDK is an ordinary published dependency, installed by `npm install`
 like any other.
@@ -63,7 +63,7 @@ until `seneca.ready()` resolves.
 
 | Option | Type | Default | Effect |
 | ------ | ---- | ------- | ------ |
-| `sdk` | object | `{}` | Passed straight to the `VoxgigSolardemoSDK` constructor. Most usefully `base`. |
+| `sdk` | object | `{}` | Passed straight to the `SolardemoSDK` constructor. Most usefully `base`. |
 | `test` | boolean | `false` | Run the SDK against its in-memory mock transport instead of HTTP. |
 | `testopts` | object | `{}` | Test-feature options, used only when `test` is true. `{entity: {...}}` seeds the mock. |
 
@@ -186,7 +186,7 @@ await seneca.post('sys:provider,provider:solardemo,get:info')
   version: '0.3.0',      // this plugin's version
   sdk: {
     name: 'voxgig-solardemo',
-    version: '0.0.1',    // the installed SDK's version
+    version: '0.1.0',    // the installed SDK's version
   },
 }
 ```
@@ -219,12 +219,14 @@ API rather than called directly.
 
 ### `SolardemoProvider/sdk`
 
-A function returning the configured `VoxgigSolardemoSDK` instance.
+A function returning the configured `SolardemoSDK` instance.
 
 ```js
 const sdk = seneca.export('SolardemoProvider/sdk')()
 
-const planets = await sdk.Planet().list()
+// Every SDK operation resolves to an SDK entity (or a list of them),
+// not raw data; `.data()` gives the plain record.
+const planets = (await sdk.Planet().list()).map((p) => p.data())
 const res = await sdk.direct({ path: '/api/planet', method: 'GET' })
 ```
 
@@ -241,18 +243,19 @@ endpoints outside the entity model.
 | Moon operation without `planet_id` | Throws before any request is made. |
 | Any other non-2xx response | Thrown as raised by the SDK. |
 
-SDK errors are `VoxgigSolardemoError` instances carrying
-`isVoxgigSolardemoError: true`, a `code` (e.g. `request_status`), and a
-`result` object holding the HTTP `status`, `statusText`, `headers` and
-`body`. The `null`-on-missing behaviour is triggered by
-`result.status === 404`.
+SDK errors are `SolardemoError` instances carrying
+`isSolardemoError: true`, a `code` (e.g. `request_status`), the HTTP
+`status` at the top level (`-1` when the request never got a response),
+a `notFound` flag, and a `result` object holding the `status`,
+`statusText`, `headers` and `body`. The `null`-on-missing behaviour is
+triggered by `err.notFound`.
 
 ```js
 try {
   await seneca.entity('provider/solardemo/planet').list$()
 }
 catch (err) {
-  console.error(err.code, err.result && err.result.status)
+  console.error(err.code, err.status, err.notFound)
 }
 ```
 

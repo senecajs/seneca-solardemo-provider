@@ -206,8 +206,10 @@ Take the configured SDK client out of the plugin exports:
 ```js
 const sdk = seneca.export('SolardemoProvider/sdk')()
 
-// The SDK's own entity interface
-const planets = await sdk.Planet().list()
+// The SDK's own entity interface. Operations resolve to SDK entities,
+// so read the record with .data().
+const planets = (await sdk.Planet().list()).map((p) => p.data())
+const earth = (await sdk.Planet().load({ id: 'earth' })).data()
 
 // Or a raw request, for anything outside the entity model
 const res = await sdk.direct({

@@ -2,13 +2,13 @@
 
 const Pkg = require('../package.json')
 
-const { VoxgigSolardemoSDK } = require('@voxgig-sdk/voxgig-solardemo')
+const { SolardemoSDK } = require('@voxgig-sdk/voxgig-solardemo')
 
 const SdkPkg = require('@voxgig-sdk/voxgig-solardemo/package.json')
 
 
 type SolardemoProviderOptions = {
-  // Options passed straight to the VoxgigSolardemoSDK constructor,
+  // Options passed straight to the SolardemoSDK constructor,
   // most usefully `base` to point at a server.
   sdk?: Record<string, any>
 
@@ -41,12 +41,12 @@ function SolardemoProvider(this: any, options: SolardemoProviderOptions) {
   }
 
 
-  // The SDK returns entity instances from list(), carrying an `entity$`
-  // marker of their own, but plain objects from load/create/update. Seneca's
-  // entize inspects `entity$` to decide what it has been handed, so hand it
-  // plain data either way rather than letting the SDK marker through.
+  // Every SDK operation now resolves to an SDK entity rather than raw data
+  // (a removed record included: it comes back marked deleted, still holding
+  // what it held). Seneca wants plain data, which the entity hands over
+  // through data().
   function plain(res: any) {
-    return (null != res && 'function' === typeof res.data) ? res.data() : res
+    return null == res ? res : res.data()
   }
 
 
@@ -65,13 +65,14 @@ function SolardemoProvider(this: any, options: SolardemoProviderOptions) {
 
   // The SDK throws on any non-2xx. A 404 from a single-item read is an
   // ordinary "not found" answer rather than a failure, so return null and
-  // let everything else propagate.
+  // let everything else propagate. SDK errors carry the HTTP status at the
+  // top level, so ask them rather than digging into `result`.
   async function ornull(action: () => Promise<any>) {
     try {
       return await action()
     }
     catch (e: any) {
-      if (404 === e?.result?.status) {
+      if (true === e?.notFound) {
         return null
       }
       throw e
@@ -228,8 +229,8 @@ function SolardemoProvider(this: any, options: SolardemoProviderOptions) {
     }
 
     this.shared.sdk = options.test
-      ? VoxgigSolardemoSDK.test(options.testopts || {}, sdkopts)
-      : new VoxgigSolardemoSDK(sdkopts)
+      ? SolardemoSDK.test(options.testopts || {}, sdkopts)
+      : new SolardemoSDK(sdkopts)
   })
 
 

@@ -45,20 +45,20 @@ work, and each disagreement is discussed below.
 
 ### Entity instances versus plain data
 
-The SDK's `list()` returns SDK entity instances; its `load()`,
-`create()` and `update()` return plain objects. The instances carry
-their own `entity$` property naming the SDK entity — `'Planet'`,
-`'Moon'`.
+Every SDK operation resolves to an SDK entity instance — `list()` to a
+list of them, and `load()`, `create()`, `update()` and `remove()` to a
+single one — never to raw data. The record is absorbed into the
+instance and read back through `.data()`. A removed entity is the same
+instance, marked deleted, still holding what it held.
 
-Seneca also uses `entity$`, to name the *canon* of an entity. Passing
-an SDK instance straight into Seneca's `entize` would therefore feed a
-foreign `entity$` into Seneca's own marker, producing entities that
-claim to belong to a canon that does not exist.
+Seneca's `entize` wants plain data, so the provider calls `.data()` on
+everything the SDK hands back before it goes anywhere near an entity.
 
-So the provider normalises everything to plain data — calling `.data()`
-when the value has it — before handing anything to `entize`. This is a
-small function guarding a subtle bug: the symptom would not be an
-error, but entities that look right and behave wrongly.
+The SDK's own marker is namespaced (`voxgig$entity`) rather than the
+bare `entity$` Seneca uses for a *canon*, so an SDK instance reaching
+`entize` no longer silently overwrites Seneca's marker. Normalising is
+still the right boundary: it is what makes the data plain, and it keeps
+the provider independent of whatever the SDK carries alongside it.
 
 ### Missing things
 
@@ -72,9 +72,10 @@ makes the common path noisy. A bad request or an unreachable server, by
 contrast, means the question could not be asked, and should interrupt.
 
 The SDK does not distinguish these — it throws for any non-2xx — so the
-provider inspects `result.status` to decide. That coupling to the SDK's
-error shape is a deliberate, narrow one, and it is why the shape is
-documented in the [reference](reference.md#errors).
+provider asks the thrown error, which reports `notFound` (and its HTTP
+`status`) at the top level. That coupling to the SDK's error shape is a
+deliberate, narrow one, and it is why the shape is documented in the
+[reference](reference.md#errors).
 
 ### Nesting
 
@@ -172,6 +173,13 @@ keeping this plugin thin and for pinning behaviour in tests: the
 offline suite exercises every entity operation against the SDK's own
 mock, so a regeneration that changes a return shape shows up here as a
 failing test rather than as a surprise in production.
+
+SDK 0.1.0 is the worked example. It renamed the exported classes
+(`VoxgigSolardemoSDK` to `SolardemoSDK`), made every operation resolve
+to an SDK entity instead of raw data, and moved the HTTP status of an
+error to the top level. Three changes, all breaking, all absorbed by
+three small functions in this plugin — `plain`, `ornull` and the
+client construction — because nothing else here knew the SDK's shapes.
 
 ## How the tests are arranged
 
