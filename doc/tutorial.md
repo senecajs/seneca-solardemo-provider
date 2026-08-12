@@ -102,7 +102,7 @@ You should see:
   ok: true,
   name: 'solardemo',
   version: '0.3.0',
-  sdk: { name: 'voxgig-solardemo', version: '0.0.1' },
+  sdk: { name: 'voxgig-solardemo', version: '0.1.0' },
 }
 ```
 

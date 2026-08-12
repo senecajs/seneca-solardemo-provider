@@ -126,7 +126,7 @@ see [Send an API key](doc/how-to.md#send-an-api-key).
 
 | Option | Type | Default | Effect |
 | ------ | ---- | ------- | ------ |
-| `sdk` | object | `{}` | Passed to the `VoxgigSolardemoSDK` constructor. Most usefully `base`. |
+| `sdk` | object | `{}` | Passed to the `SolardemoSDK` constructor. Most usefully `base`. |
 | `test` | boolean | `false` | Use the SDK's in-memory mock transport instead of HTTP. |
 | `testopts` | object | `{}` | Test-feature options; `{entity: {...}}` seeds the mock. Used only when `test` is true. |
 
@@ -180,7 +180,7 @@ await seneca.post('sys:provider,provider:solardemo,get:info')
 //   ok: true,
 //   name: 'solardemo',
 //   version: '0.3.0',
-//   sdk: { name: 'voxgig-solardemo', version: '0.0.1' },
+//   sdk: { name: 'voxgig-solardemo', version: '0.1.0' },
 // }
 ```
 
@@ -272,12 +272,14 @@ This module is sponsored and supported by
 
 ### Plugin export: `SolardemoProvider/sdk`
 
-Returns the configured `VoxgigSolardemoSDK` instance.
+Returns the configured `SolardemoSDK` instance.
 
 ```js
 const sdk = seneca.export('SolardemoProvider/sdk')()
 
-await sdk.Planet().list()
+// SDK operations resolve to SDK entities; `.data()` gives plain data.
+const planets = (await sdk.Planet().list()).map((p) => p.data())
+
 await sdk.direct({ path: '/api/planet/{id}', method: 'GET', params: { id: 'earth' } })
 ```
 

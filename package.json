@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@seneca/maintain": "^0.1.0",
-    "@voxgig-sdk/voxgig-solardemo": "^0.0.2"
+    "@voxgig-sdk/voxgig-solardemo": "^0.1.0"
   },
   "peerDependencies": {
     "@seneca/env": ">=0.4",

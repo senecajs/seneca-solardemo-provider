@@ -2,7 +2,7 @@
 /* Copyright © 2026 Seneca Project Contributors, MIT License. */
 Object.defineProperty(exports, "__esModule", { value: true });
 const Pkg = require('../package.json');
-const { VoxgigSolardemoSDK } = require('@voxgig-sdk/voxgig-solardemo');
+const { SolardemoSDK } = require('@voxgig-sdk/voxgig-solardemo');
 const SdkPkg = require('@voxgig-sdk/voxgig-solardemo/package.json');
 function SolardemoProvider(options) {
     const seneca = this;
@@ -19,12 +19,12 @@ function SolardemoProvider(options) {
             },
         };
     }
-    // The SDK returns entity instances from list(), carrying an `entity$`
-    // marker of their own, but plain objects from load/create/update. Seneca's
-    // entize inspects `entity$` to decide what it has been handed, so hand it
-    // plain data either way rather than letting the SDK marker through.
+    // Every SDK operation now resolves to an SDK entity rather than raw data
+    // (a removed record included: it comes back marked deleted, still holding
+    // what it held). Seneca wants plain data, which the entity hands over
+    // through data().
     function plain(res) {
-        return (null != res && 'function' === typeof res.data) ? res.data() : res;
+        return null == res ? res : res.data();
     }
     // Seneca query directives (sort$, limit$, ...) are for the store, not the
     // API, so they must not reach the SDK as match fields.
@@ -39,13 +39,14 @@ function SolardemoProvider(options) {
     }
     // The SDK throws on any non-2xx. A 404 from a single-item read is an
     // ordinary "not found" answer rather than a failure, so return null and
-    // let everything else propagate.
+    // let everything else propagate. SDK errors carry the HTTP status at the
+    // top level, so ask them rather than digging into `result`.
     async function ornull(action) {
         try {
             return await action();
         }
         catch (e) {
-            if (404 === e?.result?.status) {
+            if (true === e?.notFound) {
                 return null;
             }
             throw e;
@@ -161,8 +162,8 @@ function SolardemoProvider(options) {
             sdkopts.headers = Object.assign({ authorization: 'Bearer ' + apikey }, sdkopts.headers);
         }
         this.shared.sdk = options.test
-            ? VoxgigSolardemoSDK.test(options.testopts || {}, sdkopts)
-            : new VoxgigSolardemoSDK(sdkopts);
+            ? SolardemoSDK.test(options.testopts || {}, sdkopts)
+            : new SolardemoSDK(sdkopts);
     });
     return {
         exports: {
