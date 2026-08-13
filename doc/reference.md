@@ -3,6 +3,12 @@
 Complete description of the interface exposed by
 `@seneca/solardemo-provider` version 0.3.0.
 
+This document describes the machinery and assumes you know what you are
+looking for. To learn the plugin, start with the [tutorial](tutorial.md);
+for recipes, see the [how-to guides](how-to.md); for the reasoning behind
+the design, see the [explanation](explanation.md). The package overview is
+the [README](../README.md), and the document index is [here](README.md).
+
 - [Requirements](#requirements)
 - [Registration](#registration)
 - [Options](#options)
@@ -11,6 +17,7 @@ Complete description of the interface exposed by
 - [Plugin exports](#plugin-exports)
 - [Errors](#errors)
 - [Authentication keys](#authentication-keys)
+- [Environment variables](#environment-variables)
 - [Package scripts](#package-scripts)
 
 ## Requirements
@@ -24,24 +31,23 @@ Complete description of the interface exposed by
 The SDK is an ordinary published dependency, installed by `npm install`
 like any other.
 
-The companion **test server** used by the live tests is a separate
-matter: it ships only in the SDK's [source
-repository](https://github.com/voxgig-sdk/voxgig-solardemo-sdk) under
+The companion **test server** used by the live tests is a separate matter:
+it ships only in the SDK's [source repository](https://github.com/voxgig-sdk/voxgig-solardemo-sdk) under
 `app/`, and is not published. It is needed only to run the live tests —
-see [Run the live
-tests](how-to.md#run-the-live-tests-against-the-test-server).
+see the [how-to guides](how-to.md).
 
 ### Peer dependencies
 
-All must be present in the host application:
+All must be present in the host application. The accepted version ranges are
+declared in this package's `package.json`.
 
-| Package | Range |
-| ------- | ----- |
-| `seneca` | `>=3 \|\| >=4.0.0-rc2` |
-| `seneca-entity` | `>=26` |
-| `seneca-promisify` | `>=3` |
-| `@seneca/provider` | `>=4` |
-| `@seneca/env` | `>=0.4` |
+| Package | Purpose |
+| ------- | ------- |
+| `seneca` | The host framework. The plugin runs inside the host's instance, never its own. |
+| `seneca-entity` | The entity API the canons below are served through. |
+| `seneca-promisify` | The promise-returning message API. |
+| `@seneca/provider` | The provider convention, including `provider/entityBuilder`. |
+| `@seneca/env` | Resolves `$`-prefixed key values from the environment. |
 
 ## Registration
 
@@ -69,13 +75,13 @@ until `seneca.ready()` resolves.
 
 ### `sdk`
 
-Any option the SDK constructor accepts:
+Any option the `SolardemoSDK` constructor accepts:
 
 | Key | Effect |
 | --- | ------ |
-| `base` | Base URL for API requests. SDK default is `http://localhost:8901`. |
-| `prefix` / `suffix` | URL fragments around the path. |
-| `headers` | Headers sent on every request. |
+| `base` | Base URL for API requests. The SDK's own default is `http://localhost:8901`. |
+| `prefix` / `suffix` | URL fragments placed around the path. |
+| `headers` | Headers sent on every request. These win over the `authorization` header the provider adds from a configured key. |
 | `system` | System overrides, e.g. a custom `fetch`. |
 
 ### `test` and `testopts`
@@ -85,81 +91,138 @@ Any option the SDK constructor accepts:
   test: true,
   testopts: {
     entity: {
-      planet: { earth: { id: 'earth', name: 'Earth', kind: 'rock', diameter: 12756 } },
-      moon: { luna: { id: 'luna', planet_id: 'earth', name: 'Luna', kind: 'rock', diameter: 3475 } },
+      moon: { moon0: {"diameter":100,"id":"moon0","kind":"kind0","name":"name0","planet_id":"planet0"} },
+      planet: { planet0: {"diameter":100,"id":"planet0","kind":"kind0","name":"name0"} },
     },
   },
 })
 ```
 
-Mock entities are keyed by id under their entity name. In this mode no
-network calls are made, and unseeded ids produce the same not-found
-behaviour as a live server.
+Mock records are keyed by id under their entity name. In this mode no
+network calls are made, and an unseeded id produces the same not-found
+behaviour as a live server. This package's own `test/seed.js` is generated
+in exactly this shape.
+
+A nested record's parent key must name a record the parent entity also
+seeds: the mock resolves the path literally, so an unmatched parent id
+yields nothing rather than an error.
 
 ## Entities
 
-Two entity canons are registered, both supporting the **full** set of
-Seneca store commands: `list$`, `load$`, `save$` and `remove$`.
+The plugin registers 2 entity canons.
+A canon carries only the commands its API operations support — an entity the
+API offers no delete for has no `remove$` — so the tables below are the
+whole of what each one answers.
 
-### `provider/solardemo/planet`
-
-| Command | Query / data | Returns |
-| ------- | ------------ | ------- |
-| `list$(q)` | optional match fields | Array of planet entities. |
-| `load$(id)` | `id` | One planet, or `null` if not found. |
-| `save$()` | entity data | Created or updated planet. |
-| `remove$(id)` | `id` | `null`. |
-
-Fields: `id`, `name`, `kind`, `diameter`. The API also defines the
-optional `forbid`, `ok`, `start`, `state`, `stop` and `why` fields.
-
-```js
-const planets = await seneca.entity('provider/solardemo/planet').list$()
-const earth = await seneca.entity('provider/solardemo/planet').load$('earth')
-```
+| Seneca canon | SDK accessor | Route | Id field | Parent keys | Commands |
+| ------------ | ------------ | ----- | -------- | ----------- | -------- |
+| `provider/solardemo/moon` | `sdk.Moon()` | `/api/planet/{planet_id}/moon` | `id` | `planet_id` | `list$`, `load$`, `save$`, `remove$` |
+| `provider/solardemo/planet` | `sdk.Planet()` | `/api/planet` | `id` | — | `list$`, `load$`, `save$`, `remove$` |
 
 ### `provider/solardemo/moon`
 
-Moons are nested under a planet in the API, so **every** moon operation
-requires `planet_id`. Omitting it throws
-`solardemo-provider: moon <cmd>: planet_id is required` rather than
-issuing a request that would 404.
+Backed by `sdk.Moon()`, whose results are `MoonEntity` instances; the
+provider hands Seneca the plain record from `.data()`.
+
+`moon` is nested under `/api/planet/{planet_id}/moon` in the API, so **every**
+`moon` command requires `planet_id`. Omitting one throws —
+`@seneca/solardemo-provider: moon <cmd>: planet_id is required` —
+before any request is made, rather than issuing one that would 404.
 
 | Command | Query / data | Returns |
 | ------- | ------------ | ------- |
-| `list$({planet_id})` | `planet_id` **required** | Array of moon entities. |
-| `load$({planet_id, id})` | both **required** | One moon, or `null` if not found. |
-| `save$()` | data including `planet_id` | Created or updated moon. |
-| `remove$({planet_id, id})` | both **required** | `null`. |
+| `list$(q)` | `planet_id` **required**, plus optional match fields | Array of `moon` entities. |
+| `load$(q)` | `planet_id` and `id`, both **required** | One `moon`, or `null` if not found. |
+| `save$()` | entity data, including `planet_id` | Created or updated `moon`. |
+| `remove$(q)` | `planet_id` and `id`, both **required** | `null`. |
 
-Fields: `id`, `name`, `planet_id`, `kind`, `diameter`.
+Required fields, as declared by the API definition. Optional fields the API
+also defines are passed through unchanged in both directions.
+
+| Field | Type | Notes |
+| ----- | ---- | ----- |
+| `diameter` | number |  |
+| `id` | string | Id field. |
+| `kind` | string |  |
+| `name` | string |  |
+| `planet_id` | string | Parent key: the id of a `planet`. Required by every command. |
 
 ```js
 const moons = await seneca
   .entity('provider/solardemo/moon')
-  .list$({ planet_id: 'earth' })
+  .list$({ planet_id: '...' })
+const moon = await seneca
+  .entity('provider/solardemo/moon')
+  .load$({ planet_id: '...', id: '...' })
+```
+
+### `provider/solardemo/planet`
+
+Backed by `sdk.Planet()`, whose results are `PlanetEntity` instances; the
+provider hands Seneca the plain record from `.data()`.
+
+| Command | Query / data | Returns |
+| ------- | ------------ | ------- |
+| `list$(q)` | optional match fields | Array of `planet` entities. |
+| `load$(q)` | `id` **required** | One `planet`, or `null` if not found. |
+| `save$()` | entity data | Created or updated `planet`. |
+| `remove$(q)` | `id` **required** | `null`. |
+
+Required fields, as declared by the API definition. Optional fields the API
+also defines are passed through unchanged in both directions.
+
+| Field | Type | Notes |
+| ----- | ---- | ----- |
+| `diameter` | number |  |
+| `id` | string | Id field. |
+| `kind` | string |  |
+| `name` | string |  |
+
+```js
+const planets = await seneca
+  .entity('provider/solardemo/planet')
+  .list$()
+const planet = await seneca
+  .entity('provider/solardemo/planet')
+  .load$('...')
 ```
 
 ### Create versus update
 
-`save$` follows the Seneca convention: an entity **without** an `id` is
-created, an entity **with** one is updated.
+`save$` follows the Seneca convention: an entity **without** an id is
+created, an entity **with** one is updated. The provider dispatches on the
+id field, so the same call does both.
 
 ```js
 // Create — no id.
 const planet = await seneca
   .entity('provider/solardemo/planet')
-  .make$({ name: 'Pluto', kind: 'rock', diameter: 2377 })
+  .make$({ diameter: 1234, kind: 'kind-value', name: 'name-value' })
   .save$()
 
 // Update — id present.
-planet.diameter = 2400
+planet.diameter = 4321
 await planet.save$()
 ```
 
-**The API assigns ids itself and ignores any id sent on create.** A
-created entity therefore comes back with a server-generated id, which
-will not be one you chose.
+Whether a client-supplied id survives a create is a property of the API, not
+of this plugin: many assign the id themselves and ignore the one sent. Read
+the id back off the returned entity rather than assuming the one you set.
+
+### Command to SDK operation
+
+| Seneca command | SDK call | Notes |
+| -------------- | -------- | ----- |
+| `list$(q)` | `.list(q)` | Query keys are passed through as match fields. |
+| `load$(q)` | `.load({ ...keys })` | Only the keys the route needs are sent. |
+| `save$()` on an entity with no id | `.create(data)` | Data is the entity's own fields, without Seneca metadata. |
+| `save$()` on an entity with an id | `.update(data)` | |
+| `remove$(q)` | `.remove({ ...keys })` | Resolves to `null` whatever the API returns. |
+
+Every SDK operation resolves to an SDK entity instance, or a list of them,
+rather than raw data. The provider calls `.data()` on each and hands the
+plain record to `entize`, so what comes back is an ordinary Seneca entity
+under this plugin's canon, carrying none of the SDK's own markers.
 
 ### Query fields
 
@@ -172,8 +235,8 @@ otherwise supported.
 
 ### `sys:provider,provider:solardemo,get:info`
 
-Returns metadata about the plugin and SDK. Answered locally; makes no
-API call.
+Returns metadata about the plugin and SDK. Answered locally; makes no API
+call.
 
 ```js
 await seneca.post('sys:provider,provider:solardemo,get:info')
@@ -183,29 +246,32 @@ await seneca.post('sys:provider,provider:solardemo,get:info')
 {
   ok: true,
   name: 'solardemo',
-  version: '0.3.0',      // this plugin's version
+  version: '0.3.0',
   sdk: {
-    name: 'voxgig-solardemo',
-    version: '0.1.0',    // the installed SDK's version
+    name: '@voxgig-sdk/voxgig-solardemo',
+    version: '0.1.0',
   },
 }
 ```
 
+Both versions are read at runtime from the respective `package.json`, so
+they describe what is installed rather than what was generated.
+
 ### Entity patterns
 
-Registered by `@seneca/provider`. Normally reached through the entity
-API rather than called directly.
+Registered by `@seneca/provider`. Normally reached through the entity API
+rather than posted directly.
 
 | Pattern |
 | ------- |
-| `sys:entity,zone:provider,base:solardemo,name:planet,cmd:list` |
-| `sys:entity,zone:provider,base:solardemo,name:planet,cmd:load` |
-| `sys:entity,zone:provider,base:solardemo,name:planet,cmd:save` |
-| `sys:entity,zone:provider,base:solardemo,name:planet,cmd:remove` |
 | `sys:entity,zone:provider,base:solardemo,name:moon,cmd:list` |
 | `sys:entity,zone:provider,base:solardemo,name:moon,cmd:load` |
 | `sys:entity,zone:provider,base:solardemo,name:moon,cmd:save` |
 | `sys:entity,zone:provider,base:solardemo,name:moon,cmd:remove` |
+| `sys:entity,zone:provider,base:solardemo,name:planet,cmd:list` |
+| `sys:entity,zone:provider,base:solardemo,name:planet,cmd:load` |
+| `sys:entity,zone:provider,base:solardemo,name:planet,cmd:save` |
+| `sys:entity,zone:provider,base:solardemo,name:planet,cmd:remove` |
 
 ### Inherited from `@seneca/provider`
 
@@ -226,13 +292,15 @@ const sdk = seneca.export('SolardemoProvider/sdk')()
 
 // Every SDK operation resolves to an SDK entity (or a list of them),
 // not raw data; `.data()` gives the plain record.
-const planets = (await sdk.Planet().list()).map((p) => p.data())
+const planets = (await sdk.Planet().list()).map((e) => e.data())
+
+// `direct` reaches endpoints outside the entity model.
 const res = await sdk.direct({ path: '/api/planet', method: 'GET' })
 ```
 
-Available only after `seneca.ready()`. Use it for SDK features the
-entity API does not surface — notably `direct()` and `prepare()` for
-endpoints outside the entity model.
+Available only after `seneca.ready()`. Use it for SDK features the entity
+API does not surface — notably `direct()` and `prepare()` for endpoints
+the entity model does not cover.
 
 ## Errors
 
@@ -240,15 +308,18 @@ endpoints outside the entity model.
 | --------- | --------- |
 | `load$` for a non-existent id | Resolves to `null`. |
 | `remove$` for a non-existent id | Resolves to `null`; not an error. |
-| Moon operation without `planet_id` | Throws before any request is made. |
+| A nested entity command missing a parent key | Throws before any request is made. |
+| A 404 from `list$` or `save$` | Thrown. Only single-record reads and removes map a 404 to `null`. |
 | Any other non-2xx response | Thrown as raised by the SDK. |
+| A request that never got a response | Thrown, with `status` `-1`. |
 
 SDK errors are `SolardemoError` instances carrying
-`isSolardemoError: true`, a `code` (e.g. `request_status`), the HTTP
-`status` at the top level (`-1` when the request never got a response),
-a `notFound` flag, and a `result` object holding the `status`,
-`statusText`, `headers` and `body`. The `null`-on-missing behaviour is
-triggered by `err.notFound`.
+`isSolardemoError: true`, a `code` (e.g. `request_status`), the
+HTTP `status` at the top level (`-1` when the request never got a
+response), a `notFound` flag, and a `ctx` holding the request context and
+its `result` — `status`, `statusText`, `headers` and `body`. The
+`null`-on-missing behaviour is triggered by `err.notFound`, not by
+inspecting the status at the call site.
 
 ```js
 try {
@@ -259,14 +330,23 @@ catch (err) {
 }
 ```
 
+The missing-parent-key guard is this plugin's own, thrown before the SDK is
+called at all. Its message names the entity, the command and the key:
+
+| Entity | Message |
+| ------ | ------- |
+| `moon` | `@seneca/solardemo-provider: moon <cmd>: planet_id is required` |
+
+where `<cmd>` is the command that was called. A key counts as missing if
+it is absent, `null` or the empty string.
+
 ## Authentication keys
 
-The Solardemo API is **unauthenticated**, so no key is required. The
-plugin still follows the provider convention: if an `apikey` key is
-configured and non-empty, it is sent as
-`authorization: Bearer <apikey>` on every request. If the provider is
-not registered, or the key is absent or empty, no header is added and
-startup proceeds normally.
+The plugin follows the provider convention: if an `apikey` key is
+configured and non-empty, it is sent as `authorization: Bearer <apikey>`
+on every request. If the provider is not registered, or the key is absent or
+empty, no header is added and startup proceeds normally — an API that needs
+no credential exercises the same path.
 
 ```js
   .use('provider', {
@@ -280,6 +360,20 @@ startup proceeds normally.
   })
 ```
 
+The key is read once, during `seneca.prepare()`, by posting
+`sys:provider,get:keymap,provider:solardemo`. An `authorization`
+header supplied through the `sdk.headers` option takes precedence over it.
+
+## Environment variables
+
+The plugin never reads the environment itself. These are the variables the
+surrounding convention and tooling resolve:
+
+| Variable | Read by | Purpose |
+| -------- | ------- | ------- |
+| `$SOLARDEMO_APIKEY` | `@seneca/env` | Supplies the `apikey` value when the key is declared as `'$SOLARDEMO_APIKEY'`, as above. |
+| `$SOLARDEMO_TEST_BASE` | The test suite and the manual scripts | Base URL for the live tests. Defaults to `http://localhost:8901`. |
+
 ## Package scripts
 
 | Script | Action |
@@ -292,6 +386,9 @@ startup proceeds normally.
 | `npm run test-coverage` | Test suite with Node's built-in coverage. |
 | `npm run clean` | Removes `node_modules`, `dist`, `dist-test`, `.tsbuildinfo`, lockfiles. |
 | `npm run reset` | `clean`, then install, build and test. |
+| `npm run repo-tag` | Commits, tags and pushes `v<version>` taken from `package.json`. |
+| `npm run repo-publish` | Clean install, then `repo-publish-quick`. |
+| `npm run repo-publish-quick` | Build, test, tag, and publish to npm. |
 
 ### Repository layout
 
@@ -304,12 +401,20 @@ startup proceeds normally.
 | `.tsbuildinfo/` | Incremental build cache. Not committed. |
 | `doc/` | This documentation. |
 
+This repository is generated by
+[@voxgig/sdkgen](https://github.com/voxgig/sdkgen) from the Solar System
+API definition. Anything edited here is overwritten by the next generation
+run; changes belong in the model.
+
 ### Manual scripts
 
-| Script | Purpose |
-| ------ | ------- |
-| `node test/live.js` | Read planets and moons from a running server. |
-| `node test/quick.js` | Exercise the full CRUD cycle, cleaning up after itself. |
+Not part of `npm test`: they need the companion test server, which is
+distributed only in the SDK's source repository.
 
-Both target `$SOLARDEMO_TEST_BASE`, defaulting to
+| Script | Purpose |
+| ------ | ------ |
+| `node test/live.js` | Read moon, planet from a running server. |
+| `node test/quick.js` | Exercise the full write cycle on `planet`, cleaning up after itself. |
+
+Both scripts target `$SOLARDEMO_TEST_BASE`, defaulting to
 `http://localhost:8901`.
