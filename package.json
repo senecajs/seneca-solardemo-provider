@@ -1,6 +1,6 @@
 {
   "name": "@seneca/solardemo-provider",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "main": "dist/solardemo-provider.js",
   "type": "commonjs",
   "types": "dist/solardemo-provider.d.ts",

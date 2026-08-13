@@ -1,7 +1,7 @@
 # Reference
 
 Complete description of the interface exposed by
-`@seneca/solardemo-provider` version 0.1.0.
+`@seneca/solardemo-provider` version 0.1.3.
 
 This document describes the machinery and assumes you know what you are
 looking for. To learn the plugin, start with the [tutorial](tutorial.md);
@@ -246,7 +246,7 @@ await seneca.post('sys:provider,provider:solardemo,get:info')
 {
   ok: true,
   name: 'solardemo',
-  version: '0.1.0',
+  version: '0.1.3',
   sdk: {
     name: '@voxgig-sdk/voxgig-solardemo',
     version: '0.1.0',
