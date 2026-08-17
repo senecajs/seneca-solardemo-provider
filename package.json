@@ -4,7 +4,7 @@
   "main": "dist/solardemo-provider.js",
   "type": "commonjs",
   "types": "dist/solardemo-provider.d.ts",
-  "description": "Seneca entity provider for the Voxgig Solardemo API, using the voxgig-solardemo SDK.",
+  "description": "Seneca entity provider for the Solar System API, using the @voxgig-sdk/voxgig-solardemo SDK.",
   "homepage": "https://github.com/senecajs/seneca-solardemo-provider",
   "keywords": [
     "seneca",
@@ -13,30 +13,28 @@
     "voxgig",
     "sdk"
   ],
-  "author": "Richard Rodger - richardrodger.com",
-  "contributors": [
-    "Ríona Stokes https://github.com/rionastokes",
-    "Richard Rodger - richardrodger.com"
-  ],
+  "author": {
+    "name": "Voxgig",
+    "url": "https://voxgig.com"
+  },
+  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git://github.com/senecajs/seneca-solardemo-provider.git"
+    "url": "git+https://github.com/senecajs/seneca-solardemo-provider.git"
   },
   "scripts": {
     "test": "node --enable-source-maps --test test/**/*.test.js",
     "test-some": "node --enable-source-maps --test-name-pattern=\"$TEST_PATTERN\" --test \"test/**/*.test.js\"",
     "test-watch": "node --test --watch test/**/*.test.js",
-    "test-coverage": "node --enable-source-maps --experimental-test-coverage --test test/**/*.test.js",
     "watch": "tsc --build src test -w",
     "build": "tsc --build src test",
-    "doc": "echo seneca-doc -p @seneca/provider FIX-broken",
+    "test-coverage": "node --enable-source-maps --experimental-test-coverage --test test/**/*.test.js",
     "clean": "rm -rf node_modules dist dist-test .tsbuildinfo yarn.lock package-lock.json",
     "reset": "npm run clean && npm i && npm run build && npm test",
     "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag v$REPO_VERSION && git push --tags;",
     "repo-publish": "npm run clean && npm i && npm run repo-publish-quick",
-    "repo-publish-quick": "npm run build && npm run test && npm run doc && npm run repo-tag && npm publish --access public --registry https://registry.npmjs.org "
+    "repo-publish-quick": "npm run build && npm run test && npm run repo-tag && npm publish --access public --registry https://registry.npmjs.org"
   },
-  "license": "MIT",
   "files": [
     "dist",
     "src/**/*.ts",
@@ -46,8 +44,8 @@
     "node": ">=24"
   },
   "dependencies": {
-    "@seneca/maintain": "^0.1.0",
-    "@voxgig-sdk/voxgig-solardemo": "^0.1.0"
+    "@voxgig-sdk/voxgig-solardemo": "^0.1.0",
+    "@seneca/maintain": "^0.1.0"
   },
   "peerDependencies": {
     "@seneca/env": ">=0.4",
@@ -59,7 +57,7 @@
   "devDependencies": {
     "@seneca/doc": "^8.0.0",
     "@types/node": "^24.0.0",
-    "seneca": ">=3",
+    "seneca": ">=3||>=4.0.0-rc2",
     "seneca-msg-test": "^4.1.0",
     "typescript": "^5.4.5"
   }
