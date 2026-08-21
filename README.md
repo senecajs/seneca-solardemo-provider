@@ -10,18 +10,11 @@
 | ![Voxgig](https://www.voxgig.com/res/img/vgt01r.png) | This open source module is sponsored and supported by [Voxgig](https://www.voxgig.com). |
 |---|---|
 
-Provides access to the Solar System API using the Seneca _provider_
-convention. Solar System entities are represented as Seneca entities so that
-they can be accessed using the Seneca entity API and messages.
-Requests are handled by the [Solar System SDK](https://github.com/voxgig-sdk/voxgig-solardemo-sdk),
-which is generated from the API's OpenAPI specification. This plugin is
-generated from the same specification by
-[@voxgig/sdkgen](https://github.com/voxgig/sdkgen) — do not edit it by hand,
-change the model and regenerate.
-See [seneca-entity](https://github.com/senecajs/seneca-entity) and the [Seneca Data
-Entities
-Tutorial](https://senecajs.org/docs/tutorials/understanding-data-entities.html)
-for more details on the Seneca entity API.
+Provides access to the Solar System API using the Seneca provider convention. Solar System entities are represented as Seneca entities so that they can be accessed using the Seneca entity API and messages.
+
+Requests are handled by the [Solar System SDK](https://github.com/voxgig-sdk/voxgig-solardemo-sdk), which is generated from the API's OpenAPI specification. This plugin is generated from the same specification by [@voxgig/sdkgen](https://github.com/voxgig/sdkgen) — do not edit it by hand, change the model and regenerate.
+
+See [seneca-entity](https://github.com/senecajs/seneca-entity) and the [Seneca Data Entities Tutorial](https://senecajs.org/docs/tutorials/understanding-data-entities.html) for more details on the Seneca entity API.
 
 ## Install
 
