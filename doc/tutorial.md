@@ -49,12 +49,12 @@ In a new terminal:
 $ mkdir solardemo-demo
 $ cd solardemo-demo
 $ npm init -y
-$ npm install seneca seneca-entity seneca-promisify @seneca/provider @seneca/solardemo-provider
+$ npm install seneca@^4 @seneca/entity @seneca/provider @seneca/solardemo-provider
 ```
 
-The first four are the Seneca host: the framework itself, the entity
-API, the promise wrapper that makes calls awaitable, and the shared
-machinery every Seneca provider is built on. The last is this plugin,
+The first three are the Seneca host: the framework itself (Seneca 4 or
+later, whose messages are already awaitable), the entity API, and the
+shared machinery every Seneca provider is built on. The last is this plugin,
 which brings the Solar System SDK with it.
 
 ## Step 3: Connect
@@ -66,9 +66,8 @@ const Seneca = require('seneca')
 
 async function main() {
   const seneca = await Seneca({ legacy: false })
-    .use('promisify')
-    .use('entity')
-    .use('provider', {
+    .use('@seneca/entity')
+    .use('@seneca/provider', {
       provider: {
         solardemo: {
           keys: {

@@ -44,21 +44,19 @@ declared in this package's `package.json`.
 | Package | Purpose |
 | ------- | ------- |
 | `seneca` | The host framework. The plugin runs inside the host's instance, never its own. |
-| `seneca-entity` | The entity API the canons below are served through. |
-| `seneca-promisify` | The promise-returning message API. |
+| `@seneca/entity` | The entity API the canons below are served through. |
 | `@seneca/provider` | The provider convention, including `provider/entityBuilder`. |
 | `@seneca/env` | Resolves `$`-prefixed key values from the environment. |
 
 ## Registration
 
 The plugin name is `SolardemoProvider`. It must be registered after
-`entity`, `promisify` and `provider`:
+`@seneca/entity` and `@seneca/provider`:
 
 ```js
 Seneca({ legacy: false })
-  .use('promisify')
-  .use('entity')
-  .use('provider', { ... })
+  .use('@seneca/entity')
+  .use('@seneca/provider', { ... })
   .use('@seneca/solardemo-provider', { sdk: { base: 'http://localhost:8901' } })
 ```
 
@@ -349,7 +347,7 @@ empty, no header is added and startup proceeds normally — an API that needs
 no credential exercises the same path.
 
 ```js
-  .use('provider', {
+  .use('@seneca/provider', {
     provider: {
       solardemo: {
         keys: {

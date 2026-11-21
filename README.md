@@ -12,7 +12,7 @@ generated from the same specification by
 [@voxgig/sdkgen](https://github.com/voxgig/sdkgen) — do not edit it by hand,
 change the model and regenerate.
 
-See [seneca-entity](https://github.com/senecajs/seneca-entity) and the [Seneca Data
+See [@seneca/entity](https://github.com/senecajs/seneca-entity) and the [Seneca Data
 Entities
 Tutorial](https://senecajs.org/docs/tutorials/understanding-data-entities.html)
 for more details on the Seneca entity API.
@@ -46,10 +46,9 @@ Full documentation lives in [`doc/`](doc/README.md) and follows the
 const Seneca = require('seneca')
 
 const seneca = Seneca()
-  .use('promisify')
-  .use('entity')
-  .use('env', { var: { $SOLARDEMO_APIKEY: '' } })
-  .use('provider', {
+  .use('@seneca/entity')
+  .use('@seneca/env', { var: { $SOLARDEMO_APIKEY: '' } })
+  .use('@seneca/provider', {
     provider: {
       solardemo: {
         keys: { apikey: { value: '$SOLARDEMO_APIKEY' } },
@@ -76,7 +75,7 @@ npm install @seneca/solardemo-provider
 This plugin expects the Seneca host framework to be present:
 
 ```sh
-npm install seneca seneca-entity seneca-promisify @seneca/provider @seneca/env
+npm install seneca@^4 @seneca/entity @seneca/provider @seneca/env
 ```
 
 
@@ -111,7 +110,7 @@ missing key, rather than failing as an opaque 404 from a half-built URL.
 ## Action Patterns
 
 Every message pattern this plugin registers. The entity actions are the ones
-`seneca-entity` dispatches to when you call `list$` / `load$` / `save$` /
+`@seneca/entity` dispatches to when you call `list$` / `load$` / `save$` /
 `remove$` on a canon below — you rarely post them by hand, but they are what
 appears in a Seneca log, and a plugin that documents one of nine is a plugin
 whose logs cannot be read.

@@ -1,6 +1,6 @@
 {
   "name": "@seneca/solardemo-provider",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "main": "dist/solardemo-provider.js",
   "type": "commonjs",
   "types": "dist/solardemo-provider.d.ts",
@@ -32,6 +32,9 @@
     "type": "git",
     "url": "git+https://github.com/senecajs/seneca-solardemo-provider.git"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "test": "node --enable-source-maps --test test/**/*.test.js",
     "test-some": "node --enable-source-maps --test-name-pattern=\"$TEST_PATTERN\" --test \"test/**/*.test.js\"",
@@ -54,21 +57,22 @@
     "node": ">=24"
   },
   "dependencies": {
-    "@voxgig-sdk/voxgig-solardemo": "^0.1.0",
-    "@seneca/maintain": "^0.1.0"
+    "@voxgig-sdk/voxgig-solardemo": "^0.1.0"
   },
   "peerDependencies": {
-    "@seneca/env": ">=0.4",
-    "@seneca/provider": ">=4",
-    "seneca": ">=3||>=4.0.0-rc2",
-    "seneca-entity": ">=26",
-    "seneca-promisify": ">=3"
+    "@seneca/entity": "^29.0.0",
+    "@seneca/env": "^0.6.0",
+    "@seneca/provider": "^5.0.0",
+    "seneca": "^4.0.0"
   },
   "devDependencies": {
-    "@seneca/doc": "^8.0.0",
+    "@seneca/entity": "^29.0.0",
+    "@seneca/env": "^0.6.0",
+    "@seneca/maintain": "^0.1.0",
+    "@seneca/provider": "^5.0.0",
     "@types/node": "^24.0.0",
-    "seneca": ">=3||>=4.0.0-rc2",
-    "seneca-msg-test": "^4.1.0",
+    "seneca": "^4.0.0",
+    "seneca-msg-test": "^5.0.0",
     "typescript": "^5.4.5"
   }
 }

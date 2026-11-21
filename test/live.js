@@ -13,9 +13,8 @@ const BASE = process.env.SOLARDEMO_TEST_BASE || 'http://localhost:8901'
 async function makeSeneca() {
   return Seneca({ legacy: false })
     .test()
-    .use('promisify')
-    .use('entity')
-    .use('provider', {
+    .use('@seneca/entity')
+    .use('@seneca/provider', {
       provider: {
         solardemo: {
           keys: {
