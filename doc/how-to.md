@@ -226,10 +226,10 @@ same way. Declare the variable with `env` and set the key under this
 provider's name:
 
 ```js
-  .use('env', {
+  .use('@seneca/env', {
     var: { $SOLARDEMO_APIKEY: String },
   })
-  .use('provider', {
+  .use('@seneca/provider', {
     provider: {
       solardemo: {
         keys: {
